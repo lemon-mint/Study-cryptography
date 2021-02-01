@@ -28,28 +28,30 @@ func main() {
 
 func enc() {
 	if len(os.Args) == 2 {
-		keyf, err := os.Open("pubkey.pem")
-		if err != nil {
-			genkeypair()
-			keyf, err = os.Open("pubkey.pem")
+		/*
+			keyf, err := os.Open("pubkey.pem")
 			if err != nil {
-				return
+				genkeypair()
+				keyf, err = os.Open("pubkey.pem")
+				if err != nil {
+					return
+				}
 			}
-		}
-		data, err := ioutil.ReadAll(keyf)
-		/*data = []byte(`-----BEGIN RSA PUBLIC KEY-----
-		MIICCgKCAgEAta/CWvk9Y36OCYPtpxi9VplMsCF4FLD1XxyGdzwmyda6l+mipS0A
-		IDZKduLLzktf9KPhQVgQ6TstGyZg1YAAccxWjwx4RifWMfJlfk6ZbMh+9KxkjYo0
-		PlFmhm/4hsWmfKUH46uOGxzc9jAI/nurmwlrE8fW17uDw5NE0RDqVxL+ktnD81mH
-		8qReuR78WRyoE2p38krwXLhhp0UAtDQd9cyexmbhrCMFnLrg2p6+sxRkhUPgFRMo
-		s57l8aHnArtTYpcnebUvx+QSB9iW5tWekGvh1HUKyOXselLMuofP/+SC9j4yGnew
-		s64q220BQYAWIN+7VaT6Rnuofd8uv+sZkiZ+hPSpiOSq1hRhekXCyzysqZF11oFm
-		vkxq6XsJxOosMHVqJcK5A/GkyHE/pCBFordpFDLsFnd1EvjLpYcROX9zQCmTjHyK
-		UfN/w1fCfWEX3Ln+9Expxd5NssC8vEdwARPYOXGVEHDrTDdB4IZ9OGkQn2DFOUq3
-		SVbCf7bLvmFvQMwdkmRZGm1Avgqc9PDijSwiOCr75hRCIA3tHKce+rHxJAFGsF6B
-		cRbb3Nn08DeyCLupOOL+dOeqTu0n1cVG1tA3nmpGH3azamk3GOJONAq2fWroUUA5
-		5K4bxT74KUNbbChnwr4ta3ASB+e6EH/T7UVwhB64bVn8c/ZwbEwj6LECAwEAAQ==
-		-----END RSA PUBLIC KEY-----`)*/
+			data, err := ioutil.ReadAll(keyf)
+		*/
+		data := []byte(`-----BEGIN RSA PUBLIC KEY-----
+MIICCgKCAgEA8HPRPHJtkPdW89HZrMrM86o1Izyd5ZmWlwOgIV/cuvePayC3kwID
+wPXQQ5VzTYVcZtWf0+dA3Zy+F3nIK4q1bXpwbBIH/LOTVHXT1ZbEP81pw5k+x6a5
+4PfoFZwhTTPXVYz0a7n9Ljf+nV5i7iLiK8qK1p/Y3UbXuwfll6Xtjc8iKZgLOJM7
+cZWA9FPnUNON691jZ2+zFYplKnuYnPpKmdJvKrGdwntf4IQLqqjk6O7v6jbuymCe
+7ym/5YcxVngqzDoPSLEFDJrgPysN8MZYEF5nzLcabZdg06i7lKO2pt6DCFP1pmY0
+eLusFlBn4AV1P2EL4oApaCfBV8dSLTP8TxSMgvDDbEeZ1JEjycjrTltEwSUTgJ1+
+76/j6sVQF2rMgbRum+5cbRkxvbOlARJUHu0fUtQJ/sb1ddE1YE/idMxFic6s+MTG
+GrIcNww+I2KreFMRTVd5wl2ofXl4GaTeNrIqhtzKs1mrUoR6ynSmwvORtB02woRl
+ZlIwschRi5QSqxfI9GIU7RLVv4fd1NBmHG7eskUciw0w0grApUlvj4w7J+1qFBl5
+dgumXRy4d0Vyc0CbevZ1H+lonVO7L3pbxfTb9Izjue1KDL28pdQTpyA8w5beMMzP
+2eHLHORI7/p2NpN2uO8NR9UeZx0BP0hcLiPHQfmci5upu6bRTQA2G50CAwEAAQ==
+-----END RSA PUBLIC KEY-----`)
 		block, _ := pem.Decode(data)
 		pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
 		//fmt.Println(err)
