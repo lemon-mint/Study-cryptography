@@ -18,6 +18,10 @@ import (
 )
 
 func main() {
+	enc()
+}
+
+func enc() {
 	if len(os.Args) == 2 {
 		keyf, err := os.Open("pubkey.pem")
 		if err != nil {
