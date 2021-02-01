@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -18,7 +19,11 @@ import (
 )
 
 func main() {
-	enc()
+	if len(os.Args) == 2 {
+		enc()
+	} else if len(os.Args) == 3 && os.Args[2] == "decrypt" {
+		dec()
+	}
 }
 
 func enc() {
@@ -32,6 +37,19 @@ func enc() {
 			}
 		}
 		data, err := ioutil.ReadAll(keyf)
+		/*data = []byte(`-----BEGIN RSA PUBLIC KEY-----
+		MIICCgKCAgEAta/CWvk9Y36OCYPtpxi9VplMsCF4FLD1XxyGdzwmyda6l+mipS0A
+		IDZKduLLzktf9KPhQVgQ6TstGyZg1YAAccxWjwx4RifWMfJlfk6ZbMh+9KxkjYo0
+		PlFmhm/4hsWmfKUH46uOGxzc9jAI/nurmwlrE8fW17uDw5NE0RDqVxL+ktnD81mH
+		8qReuR78WRyoE2p38krwXLhhp0UAtDQd9cyexmbhrCMFnLrg2p6+sxRkhUPgFRMo
+		s57l8aHnArtTYpcnebUvx+QSB9iW5tWekGvh1HUKyOXselLMuofP/+SC9j4yGnew
+		s64q220BQYAWIN+7VaT6Rnuofd8uv+sZkiZ+hPSpiOSq1hRhekXCyzysqZF11oFm
+		vkxq6XsJxOosMHVqJcK5A/GkyHE/pCBFordpFDLsFnd1EvjLpYcROX9zQCmTjHyK
+		UfN/w1fCfWEX3Ln+9Expxd5NssC8vEdwARPYOXGVEHDrTDdB4IZ9OGkQn2DFOUq3
+		SVbCf7bLvmFvQMwdkmRZGm1Avgqc9PDijSwiOCr75hRCIA3tHKce+rHxJAFGsF6B
+		cRbb3Nn08DeyCLupOOL+dOeqTu0n1cVG1tA3nmpGH3azamk3GOJONAq2fWroUUA5
+		5K4bxT74KUNbbChnwr4ta3ASB+e6EH/T7UVwhB64bVn8c/ZwbEwj6LECAwEAAQ==
+		-----END RSA PUBLIC KEY-----`)*/
 		block, _ := pem.Decode(data)
 		pub, err := x509.ParsePKCS1PublicKey(block.Bytes)
 		//fmt.Println(err)
@@ -58,9 +76,57 @@ func enc() {
 			return
 		}
 		encryptFileCBC(file, w, cipher, ivkey[:16])
+		io.ReadFull(rand.Reader, keyinfo)
+		io.ReadFull(rand.Reader, ivkey)
 		w.Sync()
 	} else {
 		fmt.Println("usage: <filename>")
+	}
+}
+
+func dec() {
+	if len(os.Args) == 3 {
+		keyf, err := os.Open("privkey.pem")
+		if err != nil {
+			genkeypair()
+			keyf, err = os.Open("privkey.pem")
+			if err != nil {
+				return
+			}
+		}
+		data, err := ioutil.ReadAll(keyf)
+		block, _ := pem.Decode(data)
+		pub, err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		//fmt.Println(err)
+		file, err := os.Open(os.Args[1])
+		if err != nil {
+			fmt.Println("file open error")
+			return
+		}
+		w, err := os.OpenFile(os.Args[1][:len(os.Args[1])-len(".encrypted")], os.O_CREATE, os.ModeAppend)
+		if err != nil {
+			fmt.Println("file open error")
+			return
+		}
+		size := make([]byte, 8)
+		file.Read(size)
+		encryptedivkey := make([]byte, 512)
+		file.Read(encryptedivkey)
+		keyinfo, err := rsa.DecryptOAEP(sha3.New384(), rand.Reader, pub, encryptedivkey, []byte{})
+		if err != nil {
+			fmt.Println("key error")
+			return
+		}
+		cipher, err := aes.NewCipher(keyinfo[16:])
+		if err != nil {
+			fmt.Println("aes error")
+			return
+		}
+		decryptFileCBC(file, w, cipher, keyinfo[:16])
+		io.ReadFull(rand.Reader, keyinfo)
+		w.Sync()
+	} else {
+		fmt.Println("usage: <filename> <mode>")
 	}
 }
 
@@ -122,6 +188,48 @@ func encryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv []byt
 			copy(iv, EncryptedBuf)
 			w.Write(EncryptedBuf)
 			break
+		}
+	}
+	return nil
+}
+
+var errWrongSize = errors.New("Weong Size")
+
+func decryptFileCBC(input io.Reader, output io.Writer, bc cipher.Block, iv []byte) error {
+	r := bufio.NewReaderSize(input, 1024*1024*20)
+	w := bufio.NewWriterSize(output, 1024*1024*20)
+	defer w.Flush()
+	Buf := make([]byte, 16)
+	lastBuf := make([]byte, 16)
+	isStart := true
+	for {
+		n, err := r.Read(Buf)
+		if err == io.EOF {
+			if lastBuf[15] < 16 {
+				w.Write(lastBuf[0 : 16-int(lastBuf[15])])
+				break
+			} else if lastBuf[15] == 16 {
+				break
+			} else {
+				return errWrongSize
+			}
+		}
+		if err != nil {
+			return err
+		}
+		if n != 16 {
+			return errWrongSize
+		}
+		if !isStart {
+			w.Write(lastBuf)
+		}
+		bc.Decrypt(lastBuf, Buf)
+		for i := range lastBuf {
+			lastBuf[i] = lastBuf[i] ^ iv[i]
+		}
+		copy(iv, Buf)
+		if isStart {
+			isStart = false
 		}
 	}
 	return nil
